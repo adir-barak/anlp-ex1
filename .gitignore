@@ -1,2 +1,5 @@
 venv/
 .idea/
+wandb/
+models/
+results/
