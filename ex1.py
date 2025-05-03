@@ -1,9 +1,9 @@
 import argparse
-from datasets import load_dataset
 import wandb
+import numpy as np
+from datasets import load_dataset
 from transformers import AutoModelForSequenceClassification, TrainingArguments, Trainer, AutoTokenizer
 import evaluate
-import numpy as np
 
 
 def load_splits(ds, max_train_samples, max_eval_samples, max_predict_samples):
@@ -114,15 +114,12 @@ if __name__ == "__main__":
         print(f"Model path: {args.model_path}")
         print(f"Max predict samples: {args.max_predict_samples}")
 
-        # Load tokenizer and model
         tokenizer = AutoTokenizer.from_pretrained(args.model_path)
         model = AutoModelForSequenceClassification.from_pretrained(args.model_path)
 
-        # Tokenize test set WITHOUT padding
         tokenized_test = test_split.map(lambda examples: preprocess_function(tokenizer, examples),
                                         batched=True).remove_columns(["sentence1", "sentence2"])
 
-        # Create Trainer for prediction
         prediction_args = TrainingArguments(
             output_dir=config["output_dir"],
             eval_strategy="no",
@@ -140,13 +137,11 @@ if __name__ == "__main__":
         predictions = test_results.predictions
         predicted_labels = np.argmax(predictions, axis=1)
 
-        # Optional: compute accuracy if label_ids exist (only if test set has labels)
         if test_results.label_ids is not None:
             accuracy_metric = evaluate.load("accuracy")
             metrics = accuracy_metric.compute(predictions=predicted_labels, references=test_results.label_ids)
             print("Test Accuracy:", metrics["accuracy"])
 
-        # Save to predictions.txt
         with open("predictions.txt", "w", encoding="utf-8") as f:
             for ex, label in zip(test_split, predicted_labels):
                 f.write(f"{ex['sentence1']}###{ex['sentence2']}###{label}\n")

@@ -4,6 +4,9 @@ This is the code base for ANLP HUJI course exercise 1, fine tuning
 pretrained models to perform sentiment analysis on the nyu-mll/glue MRPC 
 dataset.
 
+> Tested on Python 3.11.4 (Windows 11)
+---
+
 ## Install
 ``` pip install -r requirements.txt ```
 
