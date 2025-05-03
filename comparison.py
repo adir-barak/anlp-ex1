@@ -2,6 +2,11 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification, Trai
 from datasets import load_dataset
 import numpy as np
 
+BEST_MODEL_PATH = "./models/epoch_num_4_lr_0.0001_batch_size_64"
+WORST_MODEL_PATH = "./models/epoch_num_2_lr_0.0002_batch_size_64"
+BATCH_SIZE = 64
+OUTPUT_FILE = "comparison.txt"
+
 
 def preprocess_function(tokenizer, examples):
     return tokenizer(
@@ -11,24 +16,6 @@ def preprocess_function(tokenizer, examples):
     )
 
 
-# === Config ===
-BEST_MODEL_PATH = "./models/epoch_num_4_lr_0.0001_batch_size_64"
-WORST_MODEL_PATH = "./models/epoch_num_2_lr_0.0002_batch_size_64"
-BATCH_SIZE = 64
-OUTPUT_FILE = "comparison.txt"
-
-# === Load dataset ===
-ds = load_dataset("nyu-mll/glue", "mrpc")
-comparison_data = ds["test"]
-
-# === Load tokenizer and tokenize ===
-tokenizer = AutoTokenizer.from_pretrained(BEST_MODEL_PATH)
-
-tokenized_comparison_data = comparison_data.map(lambda examples: preprocess_function(tokenizer, examples),
-                                                batched=True).remove_columns(["sentence1", "sentence2"])
-
-
-# === Prepare Trainer inference wrappers ===
 def get_predictions(model_path):
     model = AutoModelForSequenceClassification.from_pretrained(model_path)
     trainer = Trainer(
@@ -40,16 +27,22 @@ def get_predictions(model_path):
     return np.argmax(predictions, axis=1)
 
 
-# === Predict with both models ===
+ds = load_dataset("nyu-mll/glue", "mrpc")
+
+comparison_data = ds["test"]
+
+tokenizer = AutoTokenizer.from_pretrained(BEST_MODEL_PATH)
+
+tokenized_comparison_data = comparison_data.map(lambda examples: preprocess_function(tokenizer, examples),
+                                                batched=True).remove_columns(["sentence1", "sentence2"])
+
 best_predictions = get_predictions(BEST_MODEL_PATH)
 worst_predictions = get_predictions(WORST_MODEL_PATH)
 labels = np.array(comparison_data["label"])
 
-# === Find indices where best is correct and worst is wrong ===
 mask = (best_predictions == labels) & (worst_predictions != labels)
 matched_indices = np.where(mask)[0]
 
-# === Export comparison ===
 with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
     for idx in matched_indices:
         idx = int(idx)
