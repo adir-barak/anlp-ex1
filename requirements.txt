@@ -51,6 +51,7 @@ smmap==5.0.2
 sympy==1.14.0
 threadpoolctl==3.6.0
 tokenizers==0.21.1
+--extra-index-url https://download.pytorch.org/whl/cu128
 torch==2.7.0+cu128
 tqdm==4.67.1
 transformers==4.51.3
