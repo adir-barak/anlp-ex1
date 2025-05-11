@@ -1,10 +1,11 @@
-from transformers import AutoTokenizer, AutoModelForSequenceClassification, Trainer, TrainingArguments
+from transformers import AutoTokenizer, AutoModelForSequenceClassification, Trainer, TrainingArguments, \
+    DataCollatorWithPadding
 from datasets import load_dataset
 import numpy as np
 
-BEST_MODEL_PATH = "./models/epoch_num_4_lr_0.0001_batch_size_64"
-WORST_MODEL_PATH = "./models/epoch_num_2_lr_0.0002_batch_size_64"
-BATCH_SIZE = 64
+BEST_MODEL_PATH = "./models/epoch_num_3_lr_0.00015_batch_size_32"
+WORST_MODEL_PATH = "./models/epoch_num_4_lr_0.0001_batch_size_32"
+BATCH_SIZE = 32
 OUTPUT_FILE = "comparison.txt"
 
 
@@ -17,11 +18,16 @@ def preprocess_function(tokenizer, examples):
 
 
 def get_predictions(model_path):
+    tokenizer = AutoTokenizer.from_pretrained(model_path)
+    tokenized_comparison_data = comparison_data.map(lambda examples: preprocess_function(tokenizer, examples),
+                                                    batched=True).remove_columns(["sentence1", "sentence2"])
     model = AutoModelForSequenceClassification.from_pretrained(model_path)
+    data_collator = DataCollatorWithPadding(tokenizer)
     trainer = Trainer(
         model=model,
-        args=TrainingArguments(output_dir="./tmp", per_device_eval_batch_size=BATCH_SIZE),
-        processing_class=tokenizer
+        args=TrainingArguments(output_dir="./tmp", per_device_eval_batch_size=BATCH_SIZE, report_to="none"),
+        processing_class=tokenizer,
+        data_collator=data_collator,
     )
     predictions = trainer.predict(tokenized_comparison_data).predictions
     return np.argmax(predictions, axis=1)
@@ -30,11 +36,6 @@ def get_predictions(model_path):
 ds = load_dataset("nyu-mll/glue", "mrpc")
 
 comparison_data = ds["test"]
-
-tokenizer = AutoTokenizer.from_pretrained(BEST_MODEL_PATH)
-
-tokenized_comparison_data = comparison_data.map(lambda examples: preprocess_function(tokenizer, examples),
-                                                batched=True).remove_columns(["sentence1", "sentence2"])
 
 best_predictions = get_predictions(BEST_MODEL_PATH)
 worst_predictions = get_predictions(WORST_MODEL_PATH)
