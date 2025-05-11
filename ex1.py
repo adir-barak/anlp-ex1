@@ -1,8 +1,12 @@
 import argparse
+
+from transformers.data import data_collator
+
 import wandb
 import numpy as np
 from datasets import load_dataset
-from transformers import AutoModelForSequenceClassification, TrainingArguments, Trainer, AutoTokenizer
+from transformers import AutoModelForSequenceClassification, TrainingArguments, Trainer, AutoTokenizer, \
+    DataCollatorWithPadding
 import evaluate
 
 
@@ -81,6 +85,7 @@ if __name__ == "__main__":
                                       batched=True).remove_columns(["sentence1", "sentence2"])
         accuracy_metric = evaluate.load("accuracy")
         model = AutoModelForSequenceClassification.from_pretrained(config["checkpoint"], num_labels=2)
+        data_collator = DataCollatorWithPadding(tokenizer)
 
         training_args = TrainingArguments(
             output_dir=config["output_dir"],
@@ -104,6 +109,7 @@ if __name__ == "__main__":
             eval_dataset=tokenized_val,
             compute_metrics=lambda pred: compute_metric(pred=pred, metric=accuracy_metric),
             processing_class=tokenizer,
+            data_collator=data_collator,
         )
 
         trainer.train()
@@ -116,6 +122,7 @@ if __name__ == "__main__":
 
         tokenizer = AutoTokenizer.from_pretrained(args.model_path)
         model = AutoModelForSequenceClassification.from_pretrained(args.model_path)
+        data_collator = DataCollatorWithPadding(tokenizer)
 
         tokenized_test = test_split.map(lambda examples: preprocess_function(tokenizer, examples),
                                         batched=True).remove_columns(["sentence1", "sentence2"])
@@ -130,7 +137,8 @@ if __name__ == "__main__":
         trainer = Trainer(
             model=model,
             args=prediction_args,
-            processing_class=tokenizer
+            processing_class=tokenizer,
+            data_collator=data_collator
         )
 
         test_results = trainer.predict(tokenized_test)
