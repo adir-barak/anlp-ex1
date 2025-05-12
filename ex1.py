@@ -1,7 +1,5 @@
 import argparse
 
-from transformers.data import data_collator
-
 import wandb
 import numpy as np
 from datasets import load_dataset
